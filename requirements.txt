@@ -1,0 +1,4 @@
+snowflake-connector-python
+requests
+python-dotenv
+pip-system-certs  # Use Windows certificate store for corporate SSL certificates
