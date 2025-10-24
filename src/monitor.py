@@ -31,7 +31,12 @@ class SnowflakeProcedureMonitor:
         
         # Set database path to data directory
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.db_path = os.path.join(project_root, "data", "procedure_monitor.db")
+        data_dir = os.path.join(project_root, "data")
+        
+        # Create data directory if it doesn't exist
+        os.makedirs(data_dir, exist_ok=True)
+        
+        self.db_path = os.path.join(data_dir, "procedure_monitor.db")
         self.start_time = datetime.now()
         self.last_heartbeat = None  # Track last heartbeat time
         
