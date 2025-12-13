@@ -162,42 +162,71 @@ The monitor will:
 - Press `Ctrl+C` to gracefully stop the monitor
 - The application will clean up connections and exit safely
 
-### Example Notification
+### Example Notifications
 
-When a stored procedure completes, you'll receive a Telegram message like:
+When a stored procedure completes or is running, you'll receive a compact Telegram message:
 
+**Successful completion:**
 ```
-✅ Stored Procedure Completed
-
-📋 Procedure: P_DAILY_REPORT
-📊 Status: SUCCESS  
-⏱️ Duration: 2m 15s
-🏭 Warehouse: ANALYTICS_WH
-🔍 Query ID: 01a2b3c4-5678-90ab-cdef-1234567890ab
+✅ SUCCESS P_DAILY_REPORT
+⏱️ 2m 15s | Comp: 1,234ms
 ```
+
+**Failed procedure:**
+```
+❌ FAILED P_DATA_LOAD
+⏱️ 45s | Comp: 892ms
+```
+
+**Running procedure (in progress):**
+```
+🔄 RUNNING P_LONG_PROCESS
+⏱️ 15m 30s | Comp: 2,100ms
+```
+
+**Status icons:**
+- ✅ SUCCESS - Completed successfully
+- ❌ FAILED - Failed execution
+- 🔥 FAILED_WITH_ERROR - Failed with error
+- 💥 FAILED_WITH_INCIDENT - Failed with incident
+- 🔄 RUNNING - Currently executing
+- ⏳ QUEUED - Waiting to execute
 
 ## Monitoring Logic
 
 ### Query Detection
 
-The monitor looks for queries that:
-- Run on the specified warehouse
-- Contain "CALL PROCEDURE" in the query text (case-insensitive)
-- Have completed execution (SUCCESS or FAILED status)
-- Started after the monitor was launched
+The monitor queries `INFORMATION_SCHEMA.QUERY_HISTORY_BY_WAREHOUSE` and filters procedures based on:
+
+1. **Warehouse**: Only monitors the warehouse specified in `SNOWFLAKE_MONITOR_WAREHOUSE`
+2. **Procedure filter**: Matches queries against `PROCEDURE_FILTER` (SQL LIKE pattern)
+3. **Status**: Captures `SUCCESS`, `FAILED`, `FAILED_WITH_ERROR`, `FAILED_WITH_INCIDENT`, `RUNNING`, and `QUEUED`
+4. **Duration threshold**: Only notifies for procedures exceeding `MIN_DURATION_MS` (except RUNNING/QUEUED)
+5. **Time window**: Looks back 2 hours from current time
 
 ### Procedure Name Extraction
 
-The application extracts procedure names from queries like:
-- `CALL PROCEDURE P_EXAMPLE();`
-- `CALL P_DAILY_REPORT(param1, param2);`
-- `call procedure schema.p_report();`
+The application uses a generic regex pattern to extract procedure names from any CALL statement:
+
+```
+CALL DATABASE.SCHEMA.PROCEDURE_NAME()  → PROCEDURE_NAME
+CALL SCHEMA.PROCEDURE_NAME()           → PROCEDURE_NAME  
+CALL PROCEDURE_NAME()                  → PROCEDURE_NAME
+```
+
+### RUNNING Procedure Monitoring
+
+- Detects procedures currently executing (status = `RUNNING`)
+- Calculates real-time duration using `DATEDIFF(SECOND, START_TIME, CURRENT_TIMESTAMP())`
+- **Throttling**: Re-notifies every `RUNNING_PROCEDURE_THROTTLE_MINUTES` (default: 30 min, minimum: 1 min)
+- Prevents notification spam for long-running procedures
 
 ### Duplicate Prevention
 
-- Each processed query ID is stored in a local SQLite database
-- The monitor skips queries that have already been processed
-- Old records are automatically cleaned up every ~100 monitoring cycles
+- Uses **session-based tracking** with SQLite database
+- Each monitor session gets a unique ID
+- Processed query IDs are stored per session to avoid duplicates
+- Old sessions and records are automatically cleaned up after 7 days
 
 ## Troubleshooting
 
@@ -206,110 +235,42 @@ The application extracts procedure names from queries like:
 1. **Snowflake Connection Failed**
    - Verify your account identifier format
    - Ensure your user has proper permissions
-   - Check if external browser authentication is allowed
+   - For SSO: Check if external browser authentication is allowed
+   - For password auth: Verify `SNOWFLAKE_AUTHENTICATOR=snowflake` and `SNOWFLAKE_PASSWORD` are set
 
 2. **No Procedures Detected**
-   - Confirm procedures are running on the specified warehouse
-   - Check that query text contains "CALL PROCEDURE"
-   - Verify the monitor started before procedure executions
+   - Confirm procedures are running on `SNOWFLAKE_MONITOR_WAREHOUSE`
+   - Check `PROCEDURE_FILTER` matches your CALL statements
+   - Verify `MIN_DURATION_MS` isn't filtering out short procedures
+   - Ensure procedures started within the last 2 hours
 
 3. **Telegram Notifications Not Received**
    - Verify bot token and chat ID are correct
    - Ensure the bot is added to the chat/group
    - Check network connectivity
 
+4. **Too Many/Few Notifications**
+   - Adjust `PROCEDURE_FILTER` to be more/less specific
+   - Modify `MIN_DURATION_MS` to filter short procedures
+   - For RUNNING procedures, adjust `RUNNING_PROCEDURE_THROTTLE_MINUTES`
+
 ### Logging
 
-The application logs to both console and `snowflake_monitor.log`:
-- INFO: General monitoring activities
-- ERROR: Connection issues and failures
-- WARNING: Non-critical issues
+The application logs to both console and `logs/snowflake_monitor.log`:
+- **INFO**: General monitoring activities, heartbeats, notifications sent
+- **ERROR**: Connection issues and failures
+- **WARNING**: Non-critical issues, throttled notifications
+
+Logs rotate automatically at 10 MB (keeps 3 backups, max 40 MB total).
 
 ### Database
 
-The SQLite database `procedure_monitor.db` stores processed query IDs. You can safely delete this file to reset the monitoring history (all procedures will be treated as new).
+The SQLite database `data/procedure_monitor.db` stores:
+- Monitor sessions (with start/end times)
+- Processed query IDs (per session)
+- RUNNING procedure notification timestamps (for throttling)
 
-## Advanced Configuration
-
-### Authentication Methods
-
-**SSO (External Browser)** - Default:
-```env
-SNOWFLAKE_AUTHENTICATOR=externalbrowser
-```
-Opens a browser window for SSO authentication. Best for interactive use.
-
-**Password Authentication**:
-```env
-SNOWFLAKE_AUTHENTICATOR=snowflake
-SNOWFLAKE_PASSWORD=your_password
-```
-Best for automated/headless environments.
-
-### Procedure Filtering
-
-The `PROCEDURE_FILTER` variable uses SQL LIKE syntax to filter which procedures to monitor:
-
-```env
-# Monitor all CALL statements
-PROCEDURE_FILTER=CALL %
-
-# Monitor specific database/schema procedures
-PROCEDURE_FILTER=CALL MYDB.%%P_DAILY_%%
-
-# Monitor procedures starting with P_MAGIC
-PROCEDURE_FILTER=CALL %%P_MAGIC_%%
-```
-
-> **Note**: Use `%%` instead of `%` in `.env` files to escape the percent sign.
-
-### Check Interval
-
-Modify `CHECK_INTERVAL` in your `.env` file:
-- **Minimum enforced**: 60 seconds (to prevent excessive resource consumption)
-- **Default**: 60 seconds
-- **Recommended for production**: 60-180 seconds
-
-### Duration Threshold
-
-The `MIN_DURATION_MS` setting filters out short-running procedures:
-```env
-MIN_DURATION_MS=10000   # Only notify for procedures running > 10 seconds
-MIN_DURATION_MS=60000   # Only notify for procedures running > 1 minute
-```
-
-### Warehouse Monitoring
-
-To monitor multiple warehouses, you would need to run separate instances with different configurations.
-
-### Query History Permissions
-
-Ensure your Snowflake user has permissions to query `INFORMATION_SCHEMA.QUERY_HISTORY`.
-
-## Security Considerations
-
-- Keep your `.env` file secure and never commit it to version control
-- Use appropriate Snowflake user permissions (read-only for monitoring)
-- Regularly rotate Telegram bot tokens if needed
-- The SQLite database contains only query IDs (no sensitive data)
-
-## Development
-
-### Project Structure
-
-- `main.py`: Entry point and monitoring loop
-- `monitor.py`: Core Snowflake monitoring logic
-- `notifications.py`: Telegram notification handling
-- `config.py`: Environment variable management
-
-### Adding Features
-
-Common enhancements:
-- Support for multiple warehouses
-- Email notifications in addition to Telegram
-- Web dashboard for monitoring status
-- Alerting for failed procedures only
-- Integration with other monitoring systems
+You can safely delete this file to reset all monitoring history.
 
 ## License
 
