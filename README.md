@@ -2,6 +2,36 @@
 
 A Python application that monitors Snowflake executions and sends real-time notifications via Telegram when procedures complete.
 
+## 📁 Project Structure
+
+```
+snowflake_procedure_monitor/
+├── 📁 src/                          # 🐍 Core Python application code
+│   ├── main.py                      # Application entry point
+│   ├── monitor.py                   # Core monitoring logic
+│   ├── notifications.py             # Telegram notification handling
+│   └── __init__.py                  # Package initialization
+├── 📁 config/                       # ⚙️ Configuration files
+│   ├── config.py                    # Environment variable handling  
+│   ├── .env                         # Environment variables (not in git)
+│   ├── .env.example                 # Environment variables template
+│   └── __init__.py                  # Package initialization
+├── 📁 sql/                          # 📊 SQL query files
+│   ├── production_query.sql         # Production monitoring query
+│   └── test_query.sql               # Test/development query
+├── 📁 data/                         # 💾 Database and data files
+│   └── procedure_monitor.db         # SQLite tracking database
+├── 📁 logs/                         # 📝 Log files
+│   └── snowflake_monitor.log        # Application logs
+├── 📁 tests/                        # 🧪 Test and utility scripts
+│   └── query_tester.py              # Query testing utility
+├── 📁 docs/                         # 📚 Documentation
+├── run_monitor.py                   # 🎯 Main execution script
+├── requirements.txt                 # 📦 Python dependencies
+└── README.md                        # 📖 This documentation
+```
+
+
 ## Installation
 
 ### Prerequisites
@@ -187,35 +217,6 @@ CALL PROCEDURE_NAME()                  → PROCEDURE_NAME
 - Each monitor session gets a unique ID
 - Processed query IDs are stored per session to avoid duplicates
 - Old sessions and records are automatically cleaned up after 7 days
-
-## 📁 Project Structure
-
-```
-snowflake_procedure_monitor/
-├── 📁 src/                          # 🐍 Core Python application code
-│   ├── main.py                      # Application entry point
-│   ├── monitor.py                   # Core monitoring logic
-│   ├── notifications.py             # Telegram notification handling
-│   └── __init__.py                  # Package initialization
-├── 📁 config/                       # ⚙️ Configuration files
-│   ├── config.py                    # Environment variable handling  
-│   ├── .env                         # Environment variables (not in git)
-│   ├── .env.example                 # Environment variables template
-│   └── __init__.py                  # Package initialization
-├── 📁 sql/                          # 📊 SQL query files
-│   ├── production_query.sql         # Production monitoring query
-│   └── test_query.sql               # Test/development query
-├── 📁 data/                         # 💾 Database and data files
-│   └── procedure_monitor.db         # SQLite tracking database
-├── 📁 logs/                         # 📝 Log files
-│   └── snowflake_monitor.log        # Application logs
-├── 📁 tests/                        # 🧪 Test and utility scripts
-│   └── query_tester.py              # Query testing utility
-├── 📁 docs/                         # 📚 Documentation
-├── run_monitor.py                   # 🎯 Main execution script
-├── requirements.txt                 # 📦 Python dependencies
-└── README.md                        # 📖 This documentation
-```
 
 ## Troubleshooting
 
