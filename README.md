@@ -1,17 +1,6 @@
 # Snowflake Procedure Monitor
 
-A Python application that monitors Snowflake stored procedure executions and sends real-time notifications via Telegram when procedures complete.
-
-## 🚀 Features
-
-- 🔍 **Real-time Monitoring**: Continuously monitors a specific Snowflake warehouse for stored procedure executions
-- 📱 **Telegram Notifications**: Sends formatted notifications with status, duration, and procedure details
-- 🚫 **Duplicate Prevention**: Uses SQLite database to avoid sending duplicate notifications
-- 🔐 **Secure Authentication**: Uses Snowflake's external browser authentication
-- 📊 **Detailed Logging**: Comprehensive logging for debugging and monitoring
-- 🧹 **Automatic Cleanup**: Periodically cleans old processed records
-- 📁 **Organized Structure**: Clean, modular project organization
-- ⚙️ **Configurable Queries**: External SQL files for easy customization
+A Python application that monitors Snowflake executions and sends real-time notifications via Telegram when procedures complete.
 
 ## 📁 Project Structure
 
