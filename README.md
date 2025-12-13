@@ -27,6 +27,8 @@ snowflake_procedure_monitor/
 │   └── query_tester.py              # Query testing utility
 ├── 📁 docs/                         # 📚 Documentation
 ├── run_monitor.py                   # 🎯 Main execution script
+├── launcher.pyw                     # 🖥️ GUI launcher (no console)
+├── Start Monitor.bat                # ▶️ Double-click to start GUI
 ├── requirements.txt                 # 📦 Python dependencies
 └── README.md                        # 📖 This documentation
 ```
@@ -140,6 +142,21 @@ python run_monitor.py
 cd src
 python main.py
 ```
+
+### GUI Launcher (Recommended)
+
+For a more user-friendly experience, you can use the graphical launcher:
+
+- **Double-click `Start Monitor.bat`** to launch the monitor with a visual interface
+- No command line required
+- Shows connection status, Snowflake Session ID, and a progress indicator
+- Includes a "DETENER" button to stop the monitor cleanly
+
+The GUI launcher (`launcher.pyw`) provides:
+- Visual feedback during connection and monitoring
+- Copy Session ID to clipboard with one click
+- Minimize to taskbar support
+- Clean shutdown handling
 
 The monitor will:
 1. Test connections to Snowflake and Telegram
