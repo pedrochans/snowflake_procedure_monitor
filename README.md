@@ -85,16 +85,44 @@ Edit the `.env` file with your settings:
 # Snowflake Configuration
 SNOWFLAKE_USER=your_snowflake_username
 SNOWFLAKE_ACCOUNT=your_account.region.cloud
-SNOWFLAKE_WAREHOUSE=your_warehouse_name
+SNOWFLAKE_PASSWORD=                              # Only needed if using password authentication
+SNOWFLAKE_DATABASE=your_database                 # Database to connect to
+SNOWFLAKE_WAREHOUSE=your_warehouse               # Warehouse for connection
+SNOWFLAKE_MONITOR_WAREHOUSE=your_warehouse       # Warehouse to monitor for procedures
+SNOWFLAKE_AUTHENTICATOR=externalbrowser          # 'externalbrowser' (SSO) or 'snowflake' (password)
 
 # Telegram Configuration
 TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
 TELEGRAM_CHAT_ID=your_chat_id_or_group_id
 
 # Monitoring Configuration
-CHECK_INTERVAL=60  # seconds between monitoring checks (default: 60)
-RUNNING_PROCEDURE_THROTTLE_MINUTES=30  # minutes before re-notifying RUNNING procedures (default: 30)
+CHECK_INTERVAL=60                                # Seconds between checks (default: 60, minimum: 60)
+RUNNING_PROCEDURE_THROTTLE_MINUTES=30            # Minutes between RUNNING notifications (default: 30, minimum: 1)
+MIN_DURATION_MS=10000                            # Minimum procedure duration to notify in ms (default: 10000 = 10s)
+
+# Query Configuration
+QUERY_MODE=production                            # 'production' or 'test'
+PROCEDURE_FILTER=CALL %                          # SQL LIKE filter (e.g., 'CALL MYDB.%%P_PROC_%%')
 ```
+
+### Configuration Variables Reference
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `SNOWFLAKE_USER` | ✅ | - | Snowflake username or email |
+| `SNOWFLAKE_ACCOUNT` | ✅ | - | Snowflake account identifier (e.g., `mycompany.us-east-1.aws`) |
+| `SNOWFLAKE_PASSWORD` | ❌ | - | Password (only if `SNOWFLAKE_AUTHENTICATOR=snowflake`) |
+| `SNOWFLAKE_DATABASE` | ✅ | - | Database to connect to |
+| `SNOWFLAKE_WAREHOUSE` | ✅ | - | Warehouse for the connection |
+| `SNOWFLAKE_MONITOR_WAREHOUSE` | ✅ | - | Warehouse to monitor for procedure executions |
+| `SNOWFLAKE_AUTHENTICATOR` | ❌ | `externalbrowser` | Auth method: `externalbrowser` (SSO) or `snowflake` (password) |
+| `TELEGRAM_BOT_TOKEN` | ✅ | - | Telegram bot token from @BotFather |
+| `TELEGRAM_CHAT_ID` | ✅ | - | Telegram chat/group ID for notifications |
+| `CHECK_INTERVAL` | ❌ | `60` | Seconds between monitoring checks (minimum: 60) |
+| `RUNNING_PROCEDURE_THROTTLE_MINUTES` | ❌ | `30` | Minutes between re-notifications for RUNNING procedures (minimum: 1) |
+| `MIN_DURATION_MS` | ❌ | `10000` | Minimum procedure duration (ms) to trigger notification |
+| `QUERY_MODE` | ❌ | `production` | Query mode: `production` or `test` |
+| `PROCEDURE_FILTER` | ❌ | `CALL %` | SQL LIKE pattern to filter procedures |
 
 ### Finding Your Snowflake Account Identifier
 
@@ -203,12 +231,52 @@ The SQLite database `procedure_monitor.db` stores processed query IDs. You can s
 
 ## Advanced Configuration
 
-### Custom Check Interval
+### Authentication Methods
+
+**SSO (External Browser)** - Default:
+```env
+SNOWFLAKE_AUTHENTICATOR=externalbrowser
+```
+Opens a browser window for SSO authentication. Best for interactive use.
+
+**Password Authentication**:
+```env
+SNOWFLAKE_AUTHENTICATOR=snowflake
+SNOWFLAKE_PASSWORD=your_password
+```
+Best for automated/headless environments.
+
+### Procedure Filtering
+
+The `PROCEDURE_FILTER` variable uses SQL LIKE syntax to filter which procedures to monitor:
+
+```env
+# Monitor all CALL statements
+PROCEDURE_FILTER=CALL %
+
+# Monitor specific database/schema procedures
+PROCEDURE_FILTER=CALL MYDB.%%P_DAILY_%%
+
+# Monitor procedures starting with P_MAGIC
+PROCEDURE_FILTER=CALL %%P_MAGIC_%%
+```
+
+> **Note**: Use `%%` instead of `%` in `.env` files to escape the percent sign.
+
+### Check Interval
 
 Modify `CHECK_INTERVAL` in your `.env` file:
-- Minimum recommended: 30 seconds
-- Default: 60 seconds
-- For high-frequency monitoring: 15-30 seconds
+- **Minimum enforced**: 60 seconds (to prevent excessive resource consumption)
+- **Default**: 60 seconds
+- **Recommended for production**: 60-180 seconds
+
+### Duration Threshold
+
+The `MIN_DURATION_MS` setting filters out short-running procedures:
+```env
+MIN_DURATION_MS=10000   # Only notify for procedures running > 10 seconds
+MIN_DURATION_MS=60000   # Only notify for procedures running > 1 minute
+```
 
 ### Warehouse Monitoring
 

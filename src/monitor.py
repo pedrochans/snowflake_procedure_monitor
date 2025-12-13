@@ -8,11 +8,16 @@ from typing import Optional, List, Tuple
 from notifications import TelegramNotifier
 from config import (
     SNOWFLAKE_USER, 
-    SNOWFLAKE_ACCOUNT, 
+    SNOWFLAKE_ACCOUNT,
+    SNOWFLAKE_PASSWORD,
+    SNOWFLAKE_DATABASE,
     SNOWFLAKE_WAREHOUSE, 
-    SNOWFLAKE_MONITOR_WAREHOUSE, 
+    SNOWFLAKE_MONITOR_WAREHOUSE,
+    SNOWFLAKE_AUTHENTICATOR,
     QUERY_MODE,
-    RUNNING_PROCEDURE_THROTTLE_MINUTES
+    RUNNING_PROCEDURE_THROTTLE_MINUTES,
+    MIN_DURATION_MS,
+    PROCEDURE_FILTER
 )
 
 logger = logging.getLogger(__name__)
@@ -147,22 +152,32 @@ class SnowflakeProcedureMonitor:
     
     def connect_to_snowflake(self) -> bool:
         """
-        Establish connection to Snowflake using external browser authentication.
+        Establish connection to Snowflake using configured authentication method.
+        Supports: 'externalbrowser' (SSO) or 'snowflake' (user/password).
         Sets up database and warehouse context automatically.
         
         Returns:
             bool: True if connection successful, False otherwise
         """
         try:
-            self.snowflake_conn = snowflake.connector.connect(
-                user=SNOWFLAKE_USER,
-                account=SNOWFLAKE_ACCOUNT,
-                authenticator='externalbrowser',
-                warehouse=SNOWFLAKE_WAREHOUSE,
-                database='FINANCIERO'  # Establecer BD directamente en la conexión
-            )
+            # Build connection parameters
+            conn_params = {
+                'user': SNOWFLAKE_USER,
+                'account': SNOWFLAKE_ACCOUNT,
+                'warehouse': SNOWFLAKE_WAREHOUSE,
+                'database': SNOWFLAKE_DATABASE
+            }
             
-            logger.info("Successfully connected to Snowflake with database FINANCIERO")
+            # Add authentication method
+            if SNOWFLAKE_AUTHENTICATOR == 'externalbrowser':
+                conn_params['authenticator'] = 'externalbrowser'
+            else:
+                # Password authentication
+                conn_params['password'] = SNOWFLAKE_PASSWORD
+            
+            self.snowflake_conn = snowflake.connector.connect(**conn_params)
+            
+            logger.info(f"Successfully connected to Snowflake with database {SNOWFLAKE_DATABASE}")
             
             # Verificar el contexto establecido
             cursor = self.snowflake_conn.cursor()
@@ -462,7 +477,13 @@ class SnowflakeProcedureMonitor:
 
     def _extract_procedure_name(self, query_text: str) -> str:
         """
-        Extract procedure name from CALL PROCEDURE statement.
+        Extract procedure name from CALL statement.
+        
+        Uses a generic pattern that extracts the last component (procedure name)
+        from any fully qualified CALL statement like:
+        - CALL DATABASE.SCHEMA.PROCEDURE_NAME()
+        - CALL SCHEMA.PROCEDURE_NAME()
+        - CALL PROCEDURE_NAME()
         
         Args:
             query_text: The SQL query text
@@ -471,23 +492,15 @@ class SnowflakeProcedureMonitor:
             str: Extracted procedure name or 'UNKNOWN' if not found
         """
         try:
-            # Specific patterns for FINANCIERO schemas
-            # Target structures: 'CALL FINANCIERO.MAGIC_CI_DATA_STG.[procedure_name](...)'
-            #                   'CALL FINANCIERO.MAGIC_CI_DATA.[procedure_name](...)'
-            patterns = [
-                r'CALL\s+FINANCIERO\.MAGIC_CI_DATA_STG\.([A-Za-z_][A-Za-z0-9_]*)\s*\(',  # MAGIC_CI_DATA_STG schema
-                r'CALL\s+FINANCIERO\.MAGIC_CI_DATA\.([A-Za-z_][A-Za-z0-9_]*)\s*\(',      # MAGIC_CI_DATA schema
-                r'CALL\s+FINANCIERO\.([A-Za-z_][A-Za-z0-9_]*\.)?([A-Za-z_][A-Za-z0-9_]*)\s*\(',  # Fallback for FINANCIERO
-            ]
+            # Generic pattern: extracts the last identifier before the opening parenthesis
+            # Matches: CALL [optional_db.][optional_schema.]procedure_name(
+            pattern = r'CALL\s+(?:[\w]+\.)*([\w]+)\s*\('
             
-            for i, pattern in enumerate(patterns):
-                match = re.search(pattern, query_text, re.IGNORECASE)
-                if match:
-                    # For the first two patterns, return group 1 (procedure name)
-                    # For the fallback pattern, return group 2 (procedure name after optional schema)
-                    return match.group(1) if i < 2 else match.group(2)
+            match = re.search(pattern, query_text, re.IGNORECASE)
+            if match:
+                return match.group(1)
             
-            # If no pattern matches, log the full query text for debugging
+            # If no pattern matches, log for debugging
             logger.warning(f"Could not extract procedure name from: {query_text[:150]}...")
             return "UNKNOWN"
                 
@@ -518,7 +531,9 @@ class SnowflakeProcedureMonitor:
             query = self._load_query()
             
             cursor.execute(query, {
-                'warehouse': SNOWFLAKE_MONITOR_WAREHOUSE
+                'warehouse': SNOWFLAKE_MONITOR_WAREHOUSE,
+                'procedure_filter': PROCEDURE_FILTER,
+                'min_duration_ms': MIN_DURATION_MS
             })
             results = cursor.fetchall()
             
