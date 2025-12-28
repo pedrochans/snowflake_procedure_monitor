@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Snowflake Monitor: Running</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#00F0FF", 
+              "background-light": "#f6f8f8",
+              "background-dark": "#050a14",
+              "surface-dark": "#0f1623", 
+            },
+            fontFamily: {
+              "display": ["Space Grotesk", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            backgroundImage: {
+                'pixel-grid': 'linear-gradient(to right, rgba(0, 240, 255, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 240, 255, 0.05) 1px, transparent 1px)'
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .pixel-shadow {
+            box-shadow: 4px 4px 0px 0px rgba(0, 240, 255, 0.2);
+        }
+        .text-glow {
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.6);
+        }
+        .crt-line {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 6px 100%;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-800 dark:text-white min-h-screen flex flex-col overflow-hidden relative selection:bg-primary selection:text-background-dark">
+<div class="absolute inset-0 bg-pixel-grid bg-[size:40px_40px] pointer-events-none z-0"></div>
+<div class="absolute inset-0 crt-line pointer-events-none z-10 opacity-20 mix-blend-overlay"></div>
+<header class="relative z-20 flex items-center justify-between px-6 py-4 border-b border-white/5 bg-background-dark/80 backdrop-blur-sm">
+<div class="flex items-center gap-3">
+<div class="size-8 flex items-center justify-center rounded bg-primary/10 border border-primary/20 text-primary">
+<span class="material-symbols-outlined">data_usage</span>
+</div>
+<h1 class="text-white text-lg font-bold tracking-tight">Snowflake Monitor</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex gap-3">
+<div class="flex h-8 items-center justify-center gap-x-2 rounded bg-surface-dark border border-white/5 pl-2 pr-4 shadow-sm">
+<span class="material-symbols-outlined text-green-400 text-[18px]">radio_button_checked</span>
+<p class="text-white text-xs font-mono font-medium tracking-wide uppercase">Live</p>
+</div>
+<div class="flex h-8 items-center justify-center gap-x-2 rounded bg-surface-dark border border-white/5 pl-2 pr-4 shadow-sm">
+<span class="material-symbols-outlined text-primary text-[18px]">bolt</span>
+<p class="text-white text-xs font-mono font-medium tracking-wide uppercase">54ms</p>
+</div>
+</div>
+<div class="h-8 w-[1px] bg-white/10 mx-1 hidden md:block"></div>
+<div class="bg-center bg-no-repeat bg-cover rounded size-9 border border-white/10" data-alt="User profile avatar showing abstract digital art" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAYGj_OEIlP7GTDIWY3Rs4KZSZJ3w_MzUd3KXnrU14uH5Emr0SutB0VBFYoZtb9vnpOeeKAKTYFEaqJnDpwAglaDwauH64Br5OUH_hrCAVHi6NajyxEVJj-HZdkcc4ZPWhZYx_tHPp9Td0lOi6w3SGIkfX3iE8n5hgf6Sgq8LdxbXOcYUImANcjfZdWEBhO3vFZBnIVs9w5L9DV6RBLcg9aUAF9vZ1oKjvbbR3OzVZp_NWo53s914xiGeCN77NTuwi0dPv3k5MpeQE");'></div>
+</div>
+</header>
+<main class="relative z-20 flex-1 flex flex-col items-center justify-center w-full max-w-5xl mx-auto px-6 py-8">
+<div class="absolute top-10 right-6 md:right-0 opacity-40 animate-pulse pointer-events-none hidden sm:block">
+<div class="grid grid-cols-5 gap-1 w-12 h-12">
+<div class="bg-primary"></div><div class="bg-transparent"></div><div class="bg-primary"></div><div class="bg-transparent"></div><div class="bg-primary"></div>
+<div class="bg-transparent"></div><div class="bg-primary"></div><div class="bg-primary"></div><div class="bg-primary"></div><div class="bg-transparent"></div>
+<div class="bg-primary"></div><div class="bg-primary"></div><div class="bg-primary"></div><div class="bg-primary"></div><div class="bg-primary"></div>
+<div class="bg-transparent"></div><div class="bg-primary"></div><div class="bg-primary"></div><div class="bg-primary"></div><div class="bg-transparent"></div>
+<div class="bg-primary"></div><div class="bg-transparent"></div><div class="bg-primary"></div><div class="bg-transparent"></div><div class="bg-primary"></div>
+</div>
+</div>
+<div class="flex flex-col items-center justify-center w-full mb-12">
+<div class="flex items-start gap-4">
+<h2 class="text-6xl md:text-8xl lg:text-9xl font-bold text-primary tracking-tighter text-glow mb-4 select-none">Running...</h2>
+<div class="grid grid-cols-3 gap-0.5 w-6 h-6 mt-4 opacity-80 animate-pulse">
+<div class="bg-primary"></div><div class="bg-transparent"></div><div class="bg-primary"></div>
+<div class="bg-transparent"></div><div class="bg-primary"></div><div class="bg-transparent"></div>
+<div class="bg-primary"></div><div class="bg-transparent"></div><div class="bg-primary"></div>
+</div>
+</div>
+<p class="text-slate-400 text-lg font-normal mb-10 text-center max-w-lg tracking-wide">
+                Monitoring active warehouse compute. <br class="hidden md:block"/>Syncing with remote snowflake clusters.
+            </p>
+<div class="w-full max-w-xl p-1 border border-primary/30 rounded bg-background-dark/50 pixel-shadow">
+<div class="flex gap-1 h-6 w-full">
+<div class="flex-1 bg-primary shadow-[0_0_10px_rgba(0,240,255,0.5)]"></div>
+<div class="flex-1 bg-primary shadow-[0_0_10px_rgba(0,240,255,0.5)]"></div>
+<div class="flex-1 bg-primary shadow-[0_0_10px_rgba(0,240,255,0.5)]"></div>
+<div class="flex-1 bg-primary shadow-[0_0_10px_rgba(0,240,255,0.5)]"></div>
+<div class="flex-1 bg-primary shadow-[0_0_10px_rgba(0,240,255,0.5)]"></div>
+<div class="flex-1 bg-primary shadow-[0_0_10px_rgba(0,240,255,0.5)]"></div>
+<div class="flex-1 bg-primary shadow-[0_0_10px_rgba(0,240,255,0.5)]"></div>
+<div class="flex-1 bg-primary shadow-[0_0_10px_rgba(0,240,255,0.5)]"></div>
+<div class="flex-1 bg-primary/20"></div>
+<div class="flex-1 bg-primary/10"></div>
+<div class="flex-1 bg-surface-dark"></div>
+<div class="flex-1 bg-surface-dark"></div>
+<div class="flex-1 bg-surface-dark"></div>
+<div class="flex-1 bg-surface-dark"></div>
+</div>
+</div>
+<div class="flex justify-between w-full max-w-xl mt-2 px-1">
+<span class="text-xs font-mono text-primary/60">BATCH_ID: #88291A</span>
+<span class="text-xs font-mono text-primary/60">58%</span>
+</div>
+</div>
+<div class="w-full max-w-3xl rounded-lg bg-[#0a0f18] border border-white/10 shadow-2xl overflow-hidden">
+<div class="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+<div class="flex gap-2">
+<div class="size-3 rounded-full bg-red-500/80"></div>
+<div class="size-3 rounded-full bg-yellow-500/80"></div>
+<div class="size-3 rounded-full bg-green-500/80"></div>
+</div>
+<div class="text-xs text-white/30 font-mono">user@snowflake-monitor:~</div>
+<div class="size-3"></div>
+</div>
+<div class="p-6 font-mono text-sm h-48 overflow-y-auto flex flex-col gap-2">
+<div class="flex gap-3 text-white/50">
+<span class="opacity-50">[14:02:11]</span>
+<span class="text-blue-400">INFO</span>
+<span>Initializing connection to snowflake_warehouse_prod...</span>
+</div>
+<div class="flex gap-3 text-white/50">
+<span class="opacity-50">[14:02:12]</span>
+<span class="text-green-400">SUCCESS</span>
+<span>Authentication verified. Token refreshed.</span>
+</div>
+<div class="flex gap-3 text-white/50">
+<span class="opacity-50">[14:02:15]</span>
+<span class="text-blue-400">INFO</span>
+<span>Fetching compute metrics for last 60m window.</span>
+</div>
+<div class="flex gap-3 text-white/80">
+<span class="opacity-50">[14:02:18]</span>
+<span class="text-yellow-400">WARN</span>
+<span>High latency detected in region us-east-1a (142ms).</span>
+</div>
+<div class="flex gap-3 text-white/90">
+<span class="opacity-50">[14:02:19]</span>
+<span class="text-primary font-bold">EXEC</span>
+<span>Processing data blocks... 128/1024 committed.</span>
+</div>
+<div class="flex gap-3 text-white/90">
+<span class="opacity-50 text-primary"> &gt; </span>
+<span class="w-2 h-4 bg-primary inline-block align-middle"></span>
+</div>
+</div>
+</div>
+</main>
+<footer class="relative z-20 w-full px-6 py-6 border-t border-white/5 bg-background-dark/95 backdrop-blur">
+<div class="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+<div class="flex gap-8 text-sm">
+<div class="flex flex-col gap-1">
+<span class="text-white/40 text-xs font-mono uppercase">Memory</span>
+<span class="text-white font-mono">1.2 GB / 4.0 GB</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-white/40 text-xs font-mono uppercase">Uptime</span>
+<span class="text-white font-mono">14d 02h 11m</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="group flex h-10 items-center justify-center gap-2 rounded px-6 border border-white/10 bg-transparent text-white hover:bg-white/5 hover:border-white/20 transition-all">
+<span class="material-symbols-outlined text-[20px] text-white/60 group-hover:text-white">history</span>
+<span class="text-sm font-medium">Logs</span>
+</button>
+<button class="group flex h-10 items-center justify-center gap-2 rounded px-6 border border-white/10 bg-transparent text-white hover:bg-white/5 hover:border-white/20 transition-all">
+<span class="material-symbols-outlined text-[20px] text-white/60 group-hover:text-white">restart_alt</span>
+<span class="text-sm font-medium">Restart</span>
+</button>
+<button class="group flex h-10 items-center justify-center gap-2 rounded px-6 bg-primary/10 border border-primary/50 text-primary hover:bg-primary hover:text-background-dark transition-all pixel-shadow">
+<span class="material-symbols-outlined text-[20px]">stop_circle</span>
+<span class="text-sm font-bold">Stop Process</span>
+</button>
+</div>
+</div>
+</footer>
+</body></html>

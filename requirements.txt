@@ -2,3 +2,4 @@ snowflake-connector-python
 requests
 python-dotenv
 pip-system-certs  # Use Windows certificate store for corporate SSL certificates
+pywebview  # Desktop application framework for the GUI
