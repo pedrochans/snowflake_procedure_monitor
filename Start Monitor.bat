@@ -1,4 +1,4 @@
 @echo off
 cd /d "%~dp0"
-start "" pythonw launcher.pyw
+start "" py launcher.pyw
 exit
