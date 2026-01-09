@@ -263,12 +263,11 @@ def main():
         text_select=False
     )
     
-    # Maximize the window on start
-    def maximize_window():
-        window.maximize()
+    # Maximize the window on start (use maximized attribute instead of maximize() method)
+    window.maximized = True
     
     # Start the application
-    webview.start(maximize_window, debug=False)
+    webview.start(debug=False)
 
 
 if __name__ == '__main__':
