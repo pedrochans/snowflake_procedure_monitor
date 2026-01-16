@@ -67,7 +67,11 @@ snowflake_procedure_monitor/
    - Message @BotFather on Telegram
    - Create a new bot with `/newbot`
    - Get your bot token
-   - Add the bot to your chat/group and get the chat ID
+   - To get your chat ID:
+     1. Start a conversation with your bot (send any message like `/start`)
+     2. Open this URL in your browser: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+     3. Look for `"chat":{"id":123456789}` in the JSON response - that number is your chat ID
+     4. If you see `"result":[]`, make sure you sent a message to the bot first
 
 ## Configuration
 
