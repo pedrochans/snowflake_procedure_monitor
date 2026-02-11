@@ -10,6 +10,7 @@ import sys
 import subprocess
 import threading
 import time
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -18,8 +19,25 @@ landing_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(landing_dir)  # Go up one level to project root
 sys.path.insert(0, project_root)
 
+try:
+    import pip_system_certs.wrapt_requests
+except ImportError:
+    pass  # Not critical for the desktop app itself
+
 import webview
-import pip_system_certs.wrapt_requests
+
+# Setup logging for the desktop app
+log_dir = os.path.join(project_root, 'logs')
+os.makedirs(log_dir, exist_ok=True)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(os.path.join(log_dir, 'desktop_app.log'), encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger('DesktopApp')
 
 # Global state
 monitor_process = None
@@ -35,6 +53,7 @@ class MonitorAPI:
         self.project_root = project_root
         global app_start_time
         app_start_time = datetime.now()
+        logger.info(f"MonitorAPI initialized. Project root: {self.project_root}")
     
     def get_log_file_path(self):
         """Get the path to the log file."""
@@ -166,20 +185,41 @@ class MonitorAPI:
         app_start_time = datetime.now()
         
         try:
-            # Start the monitor as a subprocess
+            # Determine the correct Python executable
+            # When launched via pythonw, sys.executable points to pythonw.exe
+            # We need python.exe to run the monitor subprocess
             python_exe = sys.executable
+            if python_exe.lower().endswith('pythonw.exe'):
+                python_exe = python_exe[:-len('pythonw.exe')] + 'python.exe'
+            
             script_path = os.path.join(self.project_root, 'run_monitor.py')
+            
+            if not os.path.exists(script_path):
+                logger.error(f"Monitor script not found: {script_path}")
+                return {'success': False, 'message': f'Monitor script not found: {script_path}'}
+            
+            logger.info(f"Starting monitor: {python_exe} {script_path}")
             
             # Use CREATE_NO_WINDOW on Windows to hide the console
             creation_flags = 0
             if sys.platform == 'win32':
                 creation_flags = subprocess.CREATE_NO_WINDOW
             
+            # Set up environment - inherit current env and ensure correct paths
+            env = os.environ.copy()
+            env['PYTHONPATH'] = self.project_root
+            
+            # IMPORTANT: Do NOT use subprocess.PIPE for stdout/stderr!
+            # Nobody reads from the pipe in this app (we read logs from the file instead).
+            # If the pipe buffer fills up (~64KB), the subprocess will BLOCK forever
+            # on the next print/logging write, causing the monitor to freeze.
+            # Redirect to DEVNULL since all logging goes to the log file anyway.
             monitor_process = subprocess.Popen(
                 [python_exe, script_path],
                 cwd=self.project_root,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                env=env,
                 creationflags=creation_flags
             )
             
@@ -187,10 +227,12 @@ class MonitorAPI:
             monitor_status = "starting"
             monitor_start_time = None  # Will be set when actually running
             
+            logger.info(f"Monitor process started with PID: {monitor_process.pid}")
             return {'success': True, 'message': 'Monitor starting...'}
         
         except Exception as e:
             monitor_status = "error"
+            logger.error(f"Failed to start monitor: {e}")
             return {'success': False, 'message': str(e)}
     
     def stop_monitor(self):
@@ -202,6 +244,8 @@ class MonitorAPI:
             return {'success': True, 'message': 'Monitor is not running'}
         
         try:
+            logger.info(f"Stopping monitor process (PID: {monitor_process.pid})")
+            
             # Gracefully terminate the process
             monitor_process.terminate()
             
@@ -210,6 +254,7 @@ class MonitorAPI:
                 monitor_process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 # Force kill if it doesn't stop
+                logger.warning("Process did not terminate gracefully, force killing...")
                 monitor_process.kill()
                 monitor_process.wait()
             
@@ -217,9 +262,11 @@ class MonitorAPI:
             monitor_status = "stopped"
             monitor_start_time = None
             
+            logger.info("Monitor stopped successfully")
             return {'success': True, 'message': 'Monitor stopped successfully'}
         
         except Exception as e:
+            logger.error(f"Error stopping monitor: {e}")
             return {'success': False, 'message': str(e)}
     
     def restart_monitor(self):
@@ -242,12 +289,38 @@ class MonitorAPI:
             window.destroy()
 
 
+def on_closed():
+    """Handle window close event."""
+    global monitor_process
+    logger.info("Window closed, cleaning up...")
+    if monitor_process is not None:
+        try:
+            monitor_process.terminate()
+            monitor_process.wait(timeout=3)
+        except Exception:
+            try:
+                monitor_process.kill()
+            except Exception:
+                pass
+    logger.info("Desktop app closed.")
+
+
 def main():
     """Main entry point for the desktop application."""
+    logger.info("="*50)
+    logger.info("Snowflake Monitor Desktop App Starting")
+    logger.info(f"Landing dir: {landing_dir}")
+    logger.info(f"Project root: {project_root}")
+    logger.info("="*50)
+    
     api = MonitorAPI()
     
     # Get the HTML file path (same directory as this script)
     html_path = os.path.join(landing_dir, 'index.html')
+    
+    if not os.path.exists(html_path):
+        logger.error(f"HTML file not found: {html_path}")
+        return
     
     # Create the window
     window = webview.create_window(
@@ -257,16 +330,17 @@ def main():
         width=1100,
         height=800,
         min_size=(800, 600),
-        background_color='#050a14',
+        background_color='#0a0e1a',
         frameless=False,
         easy_drag=False,
         text_select=False
     )
     
-    # Maximize the window on start (use maximized attribute instead of maximize() method)
-    window.maximized = True
+    # Register close event handler
+    window.events.closed += on_closed
     
     # Start the application
+    logger.info("Starting pywebview window...")
     webview.start(debug=False)
 
 
